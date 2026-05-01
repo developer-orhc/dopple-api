@@ -28,11 +28,26 @@ export default async function handler(req, res) {
       return res.status(500).send("Unable to create finance application.");
     }
 
-    const applicationUrl =
-      data.application_url ||
-      data.redirect_url ||
-      data.url ||
-      data.apply_url;
+console.log("Dopple response:", JSON.stringify(data, null, 2));
+
+const applicationUrl =
+  data.application_url ||
+  data.redirect_url ||
+  data.url ||
+  data.apply_url ||
+  data.applicationUrl ||
+  data.redirectUrl ||
+  data.applyUrl ||
+  data.link ||
+  data.href ||
+  data.data?.application_url ||
+  data.data?.redirect_url ||
+  data.data?.url ||
+  data.data?.apply_url ||
+  data.data?.applicationUrl ||
+  data.data?.redirectUrl ||
+  data.data?.applyUrl ||
+  data.data?.link;
 
     if (!applicationUrl) {
       console.error("No application URL returned:", data);
