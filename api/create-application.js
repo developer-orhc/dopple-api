@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.DOPPLE_API_KEY
+        "api_key": process.env.DOPPLE_API_KEY
       },
       body: JSON.stringify({
         system_id: process.env.DOPPLE_SYSTEM_ID,
