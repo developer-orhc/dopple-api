@@ -3,8 +3,8 @@ export default async function handler(req, res) {
     const isLive = process.env.DOPPLE_ENV === "prod";
 
     const endpoint = isLive
-      ? "https://app.dopplepay.com/api/merchants/applications"
-      : "https://uat-app.dopplepay.com/api/merchants/applications";
+  ? `https://app.dopplepay.com/api/merchants/applications?api_key=${process.env.DOPPLE_API_KEY}&system_id=${process.env.DOPPLE_SYSTEM_ID}`
+  : `https://uat-app.dopplepay.com/api/merchants/applications?api_key=${process.env.DOPPLE_API_KEY}&system_id=${process.env.DOPPLE_SYSTEM_ID}`;
 
     const baseApplyUrl = isLive
       ? "https://app.dopplepay.com/apply?a="
@@ -15,8 +15,7 @@ export default async function handler(req, res) {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.DOPPLE_API_KEY
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         system_id: process.env.DOPPLE_SYSTEM_ID,
