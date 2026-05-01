@@ -2,15 +2,16 @@ export default async function handler(req, res) {
   try {
     const isLive = process.env.DOPPLE_ENV === "prod";
 
-    const endpoint = isLive
-  ? `https://app.dopplepay.com/api/merchants/applications?api_key=${process.env.DOPPLE_API_KEY}&system_id=${process.env.DOPPLE_SYSTEM_ID}`
-  : `https://uat-app.dopplepay.com/api/merchants/applications?api_key=${process.env.DOPPLE_API_KEY}&system_id=${process.env.DOPPLE_SYSTEM_ID}`;
+    const domain = isLive
+      ? "https://app.dopplepay.com"
+      : "https://uat-app.dopplepay.com";
 
-    const baseApplyUrl = isLive
-      ? "https://app.dopplepay.com/apply?a="
-      : "https://uat-app.dopplepay.com/apply?a=";
+    const endpoint =
+      `${domain}/api/merchants/applications` +
+      `?api_key=${encodeURIComponent(process.env.DOPPLE_API_KEY)}` +
+      `&system_id=${encodeURIComponent(process.env.DOPPLE_SYSTEM_ID)}`;
 
-    const identifier = `optimum-${Date.now()}`;
+    const baseApplyUrl = `${domain}/apply?a=`;
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -18,19 +19,25 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        system_id: process.env.DOPPLE_SYSTEM_ID,
-        identifier: identifier,
+        identifier: `optimum-${Date.now()}`,
         csn_url: process.env.ZAPIER_WEBHOOK_URL
       })
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
+    console.log("Dopple raw response:", rawText);
 
-    console.log("Dopple response:", JSON.stringify(data, null, 2));
+    let data = {};
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      return res.status(500).send(`Dopple returned non-JSON response: ${rawText}`);
+    }
+
+    console.log("Dopple parsed response:", JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      console.error("Dopple error:", data);
-      return res.status(500).send(`Dopple error: ${data?.error?.reason || "Unknown error"}`);
+      return res.status(500).send(`Dopple error: ${data?.error?.reason || rawText || "Unknown error"}`);
     }
 
     const applicationUrl =
@@ -68,11 +75,10 @@ export default async function handler(req, res) {
       return res.redirect(`${baseApplyUrl}${applicationId}`);
     }
 
-    console.error("No application URL or ID returned:", data);
-    return res.status(500).send("Finance application created but no redirect URL or application ID was returned.");
+    return res.status(500).send(`No redirect URL or application ID returned. Response: ${rawText}`);
 
   } catch (error) {
     console.error("Server error:", error);
-    return res.status(500).send("Something went wrong creating the finance application.");
+    return res.status(500).send(`Server error: ${error.message}`);
   }
 }
