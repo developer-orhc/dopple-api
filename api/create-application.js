@@ -6,13 +6,17 @@ export default async function handler(req, res) {
       ? "https://app.dopplepay.com/api/merchants/applications"
       : "https://uat-app.dopplepay.com/api/merchants/applications";
 
+    const baseApplyUrl = isLive
+      ? "https://app.dopplepay.com/apply?a="
+      : "https://uat-app.dopplepay.com/apply?a=";
+
     const identifier = `optimum-${Date.now()}`;
 
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.DOPPLE_API_KEY}`
+        "x-api-key": process.env.DOPPLE_API_KEY
       },
       body: JSON.stringify({
         system_id: process.env.DOPPLE_SYSTEM_ID,
@@ -23,38 +27,50 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    console.log("Dopple response:", JSON.stringify(data, null, 2));
+
     if (!response.ok) {
       console.error("Dopple error:", data);
-      return res.status(500).send("Unable to create finance application.");
+      return res.status(500).send(`Dopple error: ${data?.error?.reason || "Unknown error"}`);
     }
 
-console.log("Dopple response:", JSON.stringify(data, null, 2));
+    const applicationUrl =
+      data.application_url ||
+      data.redirect_url ||
+      data.url ||
+      data.apply_url ||
+      data.applicationUrl ||
+      data.redirectUrl ||
+      data.applyUrl ||
+      data.link ||
+      data.href ||
+      data.data?.application_url ||
+      data.data?.redirect_url ||
+      data.data?.url ||
+      data.data?.apply_url ||
+      data.data?.applicationUrl ||
+      data.data?.redirectUrl ||
+      data.data?.applyUrl ||
+      data.data?.link;
 
-const applicationUrl =
-  data.application_url ||
-  data.redirect_url ||
-  data.url ||
-  data.apply_url ||
-  data.applicationUrl ||
-  data.redirectUrl ||
-  data.applyUrl ||
-  data.link ||
-  data.href ||
-  data.data?.application_url ||
-  data.data?.redirect_url ||
-  data.data?.url ||
-  data.data?.apply_url ||
-  data.data?.applicationUrl ||
-  data.data?.redirectUrl ||
-  data.data?.applyUrl ||
-  data.data?.link;
+    const applicationId =
+      data.application_id ||
+      data.applicationId ||
+      data.id ||
+      data.data?.application_id ||
+      data.data?.applicationId ||
+      data.data?.id;
 
-    if (!applicationUrl) {
-      console.error("No application URL returned:", data);
-      return res.status(500).send("Finance application created but no redirect URL was returned.");
+    if (applicationUrl) {
+      return res.redirect(applicationUrl);
     }
 
-    return res.redirect(applicationUrl);
+    if (applicationId) {
+      return res.redirect(`${baseApplyUrl}${applicationId}`);
+    }
+
+    console.error("No application URL or ID returned:", data);
+    return res.status(500).send("Finance application created but no redirect URL or application ID was returned.");
 
   } catch (error) {
     console.error("Server error:", error);
