@@ -6,12 +6,17 @@ export default async function handler(req, res) {
       ? "https://app.dopplepay.com"
       : "https://uat-app.dopplepay.com";
 
-    const endpoint =
-      `${domain}/api/merchants/applications` +
-      `?api_key=${encodeURIComponent(process.env.DOPPLE_API_KEY)}` +
-      `&system_id=${encodeURIComponent(process.env.DOPPLE_SYSTEM_ID)}`;
+    const params = new URLSearchParams({
+      api_key: process.env.DOPPLE_API_KEY,
+      system_id: process.env.DOPPLE_SYSTEM_ID,
+      merchant_unique_reference: `optimum-${Date.now()}`,
+      csn_url: process.env.ZAPIER_WEBHOOK_URL,
+      return_url_accepted: "https://optimumhealthcentre.co.uk/finance-approved",
+      return_url_declined: "https://optimumhealthcentre.co.uk/finance-declined",
+      return_url_other: "https://optimumhealthcentre.co.uk/finance-application-status"
+    });
 
-    const baseApplyUrl = `${domain}/apply?a=`;
+    const endpoint = `${domain}/api/merchants/applications?${params.toString()}`;
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -19,8 +24,12 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        identifier: `optimum-${Date.now()}`,
-        csn_url: process.env.ZAPIER_WEBHOOK_URL
+        goods: [
+          {
+            description: "Adult Autism Assessment",
+            price: 199900
+          }
+        ]
       })
     });
 
@@ -34,48 +43,19 @@ export default async function handler(req, res) {
       return res.status(500).send(`Dopple returned non-JSON response: ${rawText}`);
     }
 
-    console.log("Dopple parsed response:", JSON.stringify(data, null, 2));
-
     if (!response.ok) {
       return res.status(500).send(`Dopple error: ${data?.error?.reason || rawText || "Unknown error"}`);
     }
 
-    const applicationUrl =
-      data.application_url ||
-      data.redirect_url ||
-      data.url ||
-      data.apply_url ||
-      data.applicationUrl ||
-      data.redirectUrl ||
-      data.applyUrl ||
-      data.link ||
-      data.href ||
-      data.data?.application_url ||
-      data.data?.redirect_url ||
-      data.data?.url ||
-      data.data?.apply_url ||
-      data.data?.applicationUrl ||
-      data.data?.redirectUrl ||
-      data.data?.applyUrl ||
-      data.data?.link;
-
-    const applicationId =
-      data.application_id ||
-      data.applicationId ||
-      data.id ||
-      data.data?.application_id ||
-      data.data?.applicationId ||
-      data.data?.id;
-
-    if (applicationUrl) {
-      return res.redirect(applicationUrl);
+    if (data.url) {
+      return res.redirect(data.url);
     }
 
-    if (applicationId) {
-      return res.redirect(`${baseApplyUrl}${applicationId}`);
+    if (data.application_id) {
+      return res.redirect(`${domain}/apply?a=${data.application_id}`);
     }
 
-    return res.status(500).send(`No redirect URL or application ID returned. Response: ${rawText}`);
+    return res.status(500).send(`No URL returned. Response: ${rawText}`);
 
   } catch (error) {
     console.error("Server error:", error);
